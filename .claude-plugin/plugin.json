@@ -1,0 +1,60 @@
+{
+  "name": "vm2api-quota-guard",
+  "version": "0.1.6",
+  "description": "Account quota bridge with one-shot compaction and normal continuation for vm2api.",
+  "userConfig": {
+    "bridgeUrl": {
+      "type": "string",
+      "default": "http://127.0.0.1:47824",
+      "description": "Loopback SSH tunnel or your trusted HTTPS quota bridge.",
+      "title": "bridgeUrl"
+    },
+    "threshold": {
+      "type": "number",
+      "default": 85,
+      "min": 50,
+      "max": 95,
+      "title": "threshold",
+      "description": "threshold for the quota bridge."
+    },
+    "weeklyThreshold": {
+      "type": "number",
+      "default": 90,
+      "min": 50,
+      "max": 95,
+      "title": "weeklyThreshold",
+      "description": "weeklyThreshold for the quota bridge."
+    },
+    "compactMinContext": {
+      "type": "number",
+      "default": 50,
+      "min": 0,
+      "max": 100,
+      "title": "compactMinContext",
+      "description": "Inclusive context percentage required before quota compaction (continue policy)."
+    },
+    "afterCompact": {
+      "type": "string",
+      "default": "continue",
+      "title": "afterCompact",
+      "description": "continue permits ordinary prompts and agents after compaction; pause selects the legacy enforced pause."
+    },
+    "pollSeconds": {
+      "type": "number",
+      "default": 30,
+      "min": 10,
+      "max": 120,
+      "title": "pollSeconds",
+      "description": "pollSeconds for the quota bridge."
+    },
+    "autoResume": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable only after compaction and account routing acceptance tests.",
+      "title": "autoResume"
+    }
+  },
+  "author": {
+    "name": "Claude Quota Bridge contributors"
+  }
+}
