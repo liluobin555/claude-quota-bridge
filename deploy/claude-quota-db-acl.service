@@ -1,0 +1,14 @@
+[Unit]
+Description=Restore only the quota-reader ACL for fixed SQLite paths
+StartLimitIntervalSec=60
+StartLimitBurst=30
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/claude-quota-bridge/current/deploy/ensure-db-read-acl.py
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/vm2api/data

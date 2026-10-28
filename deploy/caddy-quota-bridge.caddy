@@ -1,0 +1,17 @@
+# Insert before the existing catch-all route in your domain's HTTPS server.
+# Public clients use their own SK; no SSH login or admin credential is exposed.
+@quota path /quota-bridge /quota-bridge/*
+route @quota {
+    @quotaInvalid not path /quota-bridge/v1/session /quota-bridge/v1/agents /quota-bridge/v1/lease /quota-bridge/v1/release /quota-bridge/v1/agent-event /quota-bridge/v1/refresh
+    respond @quotaInvalid 404
+    @quotaMethodInvalid not method GET POST
+    respond @quotaMethodInvalid 405
+    request_body {
+        max_size 8192
+    }
+    uri strip_prefix /quota-bridge
+    header Cache-Control "no-store"
+    reverse_proxy 127.0.0.1:47824 {
+        header_up X-Quota-Client-IP {remote_host}
+    }
+}

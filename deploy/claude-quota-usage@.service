@@ -1,0 +1,19 @@
+[Unit]
+Description=Verified slot usage refresh (no model probe)
+
+[Service]
+Type=exec
+User=root
+WorkingDirectory=/opt/claude-quota-bridge/current
+ExecStart=/usr/bin/python3 deploy/usage-socket.py
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+TimeoutStartSec=35
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/cache/claude-quota-bridge

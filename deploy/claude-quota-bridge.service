@@ -1,0 +1,23 @@
+[Unit]
+Description=Claude quota bridge (read-only vm2api adapter)
+After=network.target
+
+[Service]
+Type=simple
+User=quota-bridge
+Group=quota-bridge
+WorkingDirectory=/opt/claude-quota-bridge/current
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m server.bridge --config /etc/claude-quota-bridge/config.json
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/vm2api/data /etc/claude-quota-bridge
+ReadWritePaths=/var/lib/claude-quota-bridge
+
+[Install]
+WantedBy=multi-user.target

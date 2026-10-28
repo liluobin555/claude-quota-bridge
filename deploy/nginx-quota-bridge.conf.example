@@ -1,0 +1,33 @@
+# TEMPLATE ONLY: include the limit_req_zone directive in nginx's http context.
+# Keep the bridge bound to 127.0.0.1. Do not expose port 47824 or SSH credentials.
+limit_req_zone $binary_remote_addr zone=quota_bridge_clients:10m rate=5r/s;
+
+# Include this location in the existing, valid HTTPS server for your domain.
+# Do not place it in a plaintext port-80 server, even with an HTTP->HTTPS redirect:
+# the first HTTP request would already expose its Authorization header.
+# A trailing slash in the client base URL is optional.
+location /quota-bridge/ {
+    if ($uri !~ "^/quota-bridge/v1/(session|agents|lease|release|agent-event|refresh)$") { return 404; }
+    limit_req zone=quota_bridge_clients burst=15 nodelay;
+    limit_req_status 429;
+    client_max_body_size 8k;
+    client_body_timeout 10s;
+    limit_except GET POST { deny all; }
+
+    # The bridge authenticates every operation using that user's own vm2api SK.
+    # Never insert an admin token here and never log Authorization/request bodies.
+    access_log off;
+    # Upstream errors can include a request URI/sessionId. The response provides
+    # errors without putting client-specific request lines into the proxy log.
+    error_log /dev/null crit;
+    proxy_pass http://127.0.0.1:47824/;
+    proxy_set_header Authorization $http_authorization;
+    proxy_set_header Origin $http_origin;
+    proxy_set_header Host $host;
+    proxy_connect_timeout 3s;
+    proxy_read_timeout 35s;
+    proxy_send_timeout 10s;
+    proxy_cache off;
+    proxy_buffering off;
+    add_header Cache-Control "no-store" always;
+}

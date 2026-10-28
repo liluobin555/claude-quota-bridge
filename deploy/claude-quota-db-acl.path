@@ -1,0 +1,12 @@
+[Unit]
+Description=Monitor only the vm2api SQLite files for quota-reader permission loss
+
+[Path]
+PathChanged=/opt/vm2api/data
+PathChanged=/opt/vm2api/data/kin.db
+PathChanged=/opt/vm2api/data/kin.db-wal
+PathChanged=/opt/vm2api/data/kin.db-shm
+Unit=claude-quota-db-acl.service
+
+[Install]
+WantedBy=multi-user.target
