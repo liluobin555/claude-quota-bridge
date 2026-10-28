@@ -1,0 +1,10 @@
+{
+  "listen": "127.0.0.1", "port": 47824,
+  "vm2apiDb": "/opt/vm2api/data/kin.db",
+  "stateDb": "/var/lib/claude-quota-bridge/state.sqlite",
+  "hashSecretFile": "/etc/claude-quota-bridge/api-key-hash-secret",
+  "referenceSecretFile": "/etc/claude-quota-bridge/reference-secret",
+  "verifiedSingleVmKeyIds": [],
+  "maxSampleAgeMs": 120000,
+  "allowRefresh": false
+}

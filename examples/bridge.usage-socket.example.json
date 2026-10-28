@@ -1,0 +1,22 @@
+{
+  "listen": "127.0.0.1",
+  "port": 47824,
+  "vm2apiDb": "/opt/vm2api/data/kin.db",
+  "stateDb": "/var/lib/claude-quota-bridge/state.sqlite",
+  "hashSecretFile": "/etc/claude-quota-bridge/api-key-hash-secret",
+  "referenceSecretFile": "/etc/claude-quota-bridge/reference-secret",
+  "verifiedSingleVmKeyIds": [],
+  "maxSampleAgeMs": 120000,
+  "allowRefresh": true,
+  "usageRefreshSocket": "/run/claude-quota-bridge/usage.sock",
+  "refreshAllowedKeyIds": ["REPLACE_WITH_VERIFIED_KEY_ID"],
+  "refreshVmId": "REPLACE_WITH_SINGLE_VM_ID",
+  "officialQuotaFile": "/var/cache/claude-quota-bridge/official-usage.json",
+  "publicRateLimit": {
+    "ipRate": 2,
+    "ipBurst": 30,
+    "keyRate": 1,
+    "keyBurst": 20,
+    "maxBuckets": 4096
+  }
+}
