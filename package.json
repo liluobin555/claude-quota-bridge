@@ -1,0 +1,22 @@
+{
+  "name": "claude-quota-bridge",
+  "version": "0.1.6",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "bin": {
+    "claude-quota-run": "bin/claude-quota-run.mjs",
+    "claude-quota": "bin/claude-quota.mjs"
+  },
+  "scripts": {
+    "test": "node --test && python3 -m unittest discover -s tests -p 'test_*.py' -v",
+    "test:js": "node --test",
+    "test:server": "python3 -m unittest discover -s tests -p 'test_*.py' -v",
+    "bridge": "python3 -m server.bridge --config examples/bridge.local.json",
+    "privacy": "python3 scripts/privacy-check.py"
+  },
+  "description": "Opt-in quota-aware Claude Code compaction with a read-only vm2api sidecar.",
+  "license": "MIT"
+}
