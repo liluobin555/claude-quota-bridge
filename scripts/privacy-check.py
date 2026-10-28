@@ -35,6 +35,8 @@ def inspect(name, text):
                 pass
         for m in EMAIL.finditer(line):
             domain = m.group().rsplit('@', 1)[-1].lower()
+            if m.group().lower() == 'noreply@github.com':
+                continue  # GitHub's public web-flow committer address.
             if domain not in {'example.com', 'example.net', 'example.org'} and not domain.endswith('.example') and not domain.endswith('.noreply.github.com'):
                 found.append((name, n, 'unexpected-email'))
     return sorted(set(found))
