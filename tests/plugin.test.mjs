@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {snapshot} from './snapshot-fixture.mjs';
 
-async function engine({headless = false, direct = true, command = true, env: overrides = {}, bridgeDown = false, config = {afterCompact: 'pause'}, bootstrap = false, deferredCompact = false} = {}) {
+async function engine({headless = false, direct = true, command = true, env: overrides = {}, bridgeDown = false, config = {afterCompact: 'pause'}, bootstrap = false, deferredCompact = false, refreshAvailable = false, refreshFails = false, refreshDelayMs = 0} = {}) {
   const {register} = await import('../hooks/register.mjs?test=' + randomUUID());
   const hooks = new Map(), later = [], ticks = [], store = new Map(), reports = [];
   let now = 1793100000000, sample = snapshot(50), context = {tokens: 140000, percent: 70}, frame = 0;
   if(bootstrap)sample.bindingSource='single_vm_scope';
   let finishCompact;
-  let compacts = 0, resumes = 0, agents = 0, httpCalls = 0, credentialReads = 0;
+  let compacts = 0, resumes = 0, agents = 0, httpCalls = 0, credentialReads = 0, refreshCalls = 0;
+  if (refreshAvailable) {sample.capabilities = {refresh: true}; sample.fresh = true;}
   function on(name, matcher, callback) {
     if (typeof matcher === 'function') callback = matcher;
     hooks.set(name, callback);
@@ -32,6 +33,12 @@ async function engine({headless = false, direct = true, command = true, env: ove
       const path = new URL(url).pathname;
       if (path === '/event') {reports.push(JSON.parse(init.body)); return {status: 200, text: '{}'};}
       if (bridgeDown) throw new Error('connection refused');
+      if (path === '/v1/refresh') {
+        refreshCalls++;
+        if (refreshFails) throw new Error('usage_refresh_failed');
+        now += refreshDelayMs;
+        sample = {...sample, sampledAt: now, fresh: true};
+      }
       if(path==='/v1/lease'&&JSON.parse(init.body).bindingVersion!==sample.bindingVersion)return {status:409,text:'{"error":"automation_not_ready"}'};
       const data = path === '/v1/lease' ? {leaseId: 'lease', expiresAt: now+60000} : path === '/v1/release' || path === '/v1/agent-event' ? {ok: true} : sample;
       return {status: 200, text: JSON.stringify(data)};
@@ -52,9 +59,9 @@ async function engine({headless = false, direct = true, command = true, env: ove
   register(on, {autoResume: false, ...config});
   const flush = async () => {for (let i=0;i<50;i++) {while (later.length) later.shift()(); await new Promise(resolve => setImmediate(resolve));}};
   await emit('session.start'); await flush();
-  return {emit, flush, reports, ticks, get httpCalls() {return httpCalls;}, get credentialReads() {return credentialReads;}, get writes() {return store.size;}, get compacts() {return compacts;}, get resumes() {return resumes;},
+  return {emit, flush, reports, ticks, get httpCalls() {return httpCalls;}, get refreshCalls() {return refreshCalls;}, get credentialReads() {return credentialReads;}, get writes() {return store.size;}, get compacts() {return compacts;}, get resumes() {return resumes;},
     high() {sample = {...snapshot(85),bindingSource:sample.bindingSource};}, setContext(value) {context = value;}, setLive() {sample={...sample,bindingSource:'live_sticky',bindingVersion:'live-2'};}, finishCompact() {finishCompact();}, reset() {now += 3700000; sample = snapshot(1); sample.sampledAt = now; sample.windows[0].resetsAt = now+18000000;},
-    stale() {now += 121000;}, status: async () => JSON.parse((await emit('command.run', {args: 'status'})).text),
+    stale() {now += 121000; sample = {...sample, fresh: false};}, status: async () => JSON.parse((await emit('command.run', {args: 'status'})).text),
     async spawn() {return emit('agent.spawn', {}, async () => ({agentId: 'child-'+(++agents)}));},
     async finish() {await emit('turn.complete', {turnId: 'main-turn', reason: 'answer'}); await flush();},
   };
@@ -153,4 +160,34 @@ test('a generation change after an existing live binding still loses the compact
   e.finishCompact();await e.flush();
   assert.equal((await e.status()).hold,'compaction_failed');
   assert.equal((await e.status()).compaction.ok,false);
+});
+
+test('usage-only quota refresh recovers stale data even when a main turn is marked busy', async () => {
+  const e=await engine({refreshAvailable:true,config:{afterCompact:'continue'}});
+  await e.emit('turn.start',{turnId:'waiting-or-restored-turn'});
+  e.stale();e.ticks[0]();await e.flush();
+  assert.equal(e.refreshCalls,1);
+  assert.equal((await e.status()).hold,undefined);
+  const r=await e.emit('prompt.submit',{text:'human retry'},async()=>({accepted:true}));
+  assert.equal(r.accepted,true);
+  assert.equal(e.compacts,0);assert.equal(e.resumes,0);
+  e.ticks[0]();await e.flush();assert.equal(e.refreshCalls,1);
+});
+
+test('failed usage refresh stays protected and respects retry cooldown while busy', async () => {
+  const e=await engine({refreshAvailable:true,refreshFails:true,config:{afterCompact:'continue'}});
+  await e.emit('turn.start',{turnId:'waiting-turn'});e.stale();e.ticks[0]();await e.flush();
+  assert.equal(e.refreshCalls,1);assert.equal((await e.status()).hold,'bridge_unavailable');
+  const r=await e.emit('prompt.submit',{text:'retry'});
+  assert.ok(r.drop);assert.equal(e.refreshCalls,1);
+  assert.equal(e.compacts,0);assert.equal(e.resumes,0);
+});
+
+
+test('slow successful usage refresh is validated against the completion time', async () => {
+  const e=await engine({refreshAvailable:true,refreshDelayMs:15000,config:{afterCompact:'continue'}});
+  e.stale();e.ticks[0]();await e.flush();
+  assert.equal(e.refreshCalls,1);
+  assert.equal((await e.status()).hold,undefined);
+  assert.equal((await e.emit('prompt.submit',{text:'retry'},async()=>({accepted:true}))).accepted,true);
 });
