@@ -179,8 +179,10 @@ let mustGuard = false;
       let s = await call('/v1/session?sessionId=' + encodeURIComponent(ctl.sessionId));
       const now = await $.clock.now();
       if (generation !== epoch || ended) return;
-      if (!s.fresh && s.capabilities?.refresh && now - lastRefresh > 60000 &&
-          (ctl.state.rec.phase === 'paused' || ctl.state.rec.phase === 'idle' && !ctl.state.busy)) {
+      // Refresh reads quota only; it does not submit a model request.
+      // Busy/restored turns must not prevent stale quota from recovering.
+      // Compaction still waits for the root turn and tracked children to finish.
+      if (!s.fresh && s.capabilities?.refresh && now - lastRefresh > 60000) {
         lastRefresh = now;
         s = await call('/v1/refresh', {sessionId: ctl.sessionId});
         if (generation !== epoch || ended) return;
@@ -193,7 +195,7 @@ let mustGuard = false;
       }
       const context = (await $.session.usage()).context;
       if (generation !== epoch || ended) return;
-      const fx = ctl.ingest(s, context, now);
+      const fx = ctl.ingest(s, context, await $.clock.now());
       enqueue($, fx);
       await publish($, {evaluating: false});
     } catch { if (generation === epoch) { ctl.hold = 'bridge_unavailable'; await publish($).catch(() => {}); } }
